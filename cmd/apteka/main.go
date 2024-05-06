@@ -26,6 +26,25 @@ func main() {
 		log.Error("failed to initialize storage", sl.Err(err))
 		os.Exit(1)
 	}
+	id, err := storage.SaveDrug("banan2")
+	if err != nil {
+		log.Error("failed to save drug", sl.Err(err))
+		os.Exit(1)
+	}
+	log.Info("saved drug", slog.Int64("id", id))
+
+	id, err = storage.SaveDrug("banan3")
+	if err != nil {
+		log.Error("failed to save drug", sl.Err(err))
+		os.Exit(1)
+	}
+	log.Info("saved drug", slog.Int64("id", id))
+	// id, err := storage.SaveDrug("banan")
+	// if err != nil {
+	// 	log.Error("failed to save url", sl.Err(err))
+	// 	os.Exit(1)
+	// }
+
 }
 
 func setupLogger(env string) *slog.Logger {
