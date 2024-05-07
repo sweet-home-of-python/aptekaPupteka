@@ -6,6 +6,9 @@ import (
 	"aptekaPupteka/lib/logger/sl"
 	"log/slog"
 	"os"
+
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 )
 
 const (
@@ -31,23 +34,11 @@ func main() {
 	// 	log.Error("failed to save drug", sl.Err(err))
 	// 	os.Exit(1)
 	// }
-	// log.Info("saved drug", slog.Int64("id", id))
-	// id, err := storage.TakeDrugCount("banan2", 22)
-	// if err != nil {
-	// 	log.Error("failed to add drugs", sl.Err(err))
-	// 	os.Exit(1)
-	// }
-	id, err := storage.DeleteDrug("banan")
-	if err != nil {
-		log.Error("failed to delete drug", sl.Err(err))
-		os.Exit(1)
-	}
-	log.Info("take drugs", slog.Int64("id", id))
-	// id, err := storage.SaveDrug("banan")
-	// if err != nil {
-	// 	log.Error("failed to save url", sl.Err(err))
-	// 	os.Exit(1)
-	// }
+	router := chi.NewRouter()
+	router.Use(middleware.RequestID)
+	router.Use(middleware.Logger)    // Логирование всех запросов
+	router.Use(middleware.Recoverer) // Если где-то внутри сервера (обработчика запроса) произойдет паника, приложение не должно упасть
+	router.Use(middleware.URLFormat) // Парсер URLов поступающих запросов
 
 }
 
