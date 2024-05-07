@@ -91,6 +91,46 @@ func (s *Storage) AddDrugCount(drug string, count int)( int64 , error){
 	// Возвращаем ID
 	return id, nil
 }
+
+func (s *Storage) TakeDrugCount(drug string, count int)( int64 , error){
+	const op = "storage.sqlite.TakeDrugCount"
+	stmt, err := s.db.Prepare("UPDATE med SET count = count - ? WHERE name = ?")
+	if err != nil{
+		return 0, fmt.Errorf("%s: prepare statement: %w", op, err)
+	}
+
+	res, err:= stmt.Exec(count, drug)
+	if err != nil{
+		return 0, fmt.Errorf("%s: execute statement: %w", op, err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil{
+		return 0, fmt.Errorf("%s: failed to get last insert id: %w", op, err)
+	}
+	return id, nil
+
+}
+
+func (s *Storage) DeleteDrug(drug string)(int64, error){
+	const op = "storage.sqlite.DeleteDrug"
+	
+	stmt, err := s.db.Prepare("DELETE FROM med WHERE name = ?")
+	if err != nil{
+		return 0, fmt.Errorf("%s: failed to get last insert id: %w", op, err)
+	}
+
+	res, err := stmt.Exec(drug)
+	if err != nil{
+		return 0, fmt.Errorf("%s: failed to get last insert id: %w", op, err)
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil{
+		return 0, fmt.Errorf("%s: failed to get last insert id: %w", op, err)
+	}
+	return id, nil
+}
+
 // func (s *Storage) GetDrugCount() (int, error) {
 // 	const op = "storage.sqlite.GetDrugCount"
 
