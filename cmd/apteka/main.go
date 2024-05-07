@@ -26,19 +26,18 @@ func main() {
 		log.Error("failed to initialize storage", sl.Err(err))
 		os.Exit(1)
 	}
-	id, err := storage.SaveDrug("banan2")
+	// id, err := storage.SaveDrug("banan2")
+	// if err != nil {
+	// 	log.Error("failed to save drug", sl.Err(err))
+	// 	os.Exit(1)
+	// }
+	// log.Info("saved drug", slog.Int64("id", id))
+	id, err := storage.AddDrugCount("banan2", 13)
 	if err != nil {
-		log.Error("failed to save drug", sl.Err(err))
+		log.Error("failed to add drugs", sl.Err(err))
 		os.Exit(1)
 	}
-	log.Info("saved drug", slog.Int64("id", id))
-
-	id, err = storage.SaveDrug("banan3")
-	if err != nil {
-		log.Error("failed to save drug", sl.Err(err))
-		os.Exit(1)
-	}
-	log.Info("saved drug", slog.Int64("id", id))
+	log.Info("aded drugs", slog.Int64("id", id))
 	// id, err := storage.SaveDrug("banan")
 	// if err != nil {
 	// 	log.Error("failed to save url", sl.Err(err))

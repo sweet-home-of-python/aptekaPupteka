@@ -67,3 +67,33 @@ func (s *Storage) SaveDrug(drugToSave string) (int64, error) {
 	// Возвращаем ID
 	return id, nil
 }
+func (s *Storage) AddDrugCount(drug string, count int)( int64 , error){
+	const op = "storage.sqlite.addDrugCount"
+	var resultCount int
+	_ = resultCount
+	stmt, err := s.db.Prepare("UPDATE med SET count = count +? WHERE name = ?")
+	if err != nil {
+		return 0, fmt.Errorf("%s: prepare statement: %w", op, err)
+	}
+	res, err := stmt.Exec(count, drug)
+	if err != nil {
+		if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+			return  0, fmt.Errorf("%s: %w", op, storage.ErrDrugExist)
+		}
+
+		return  0, fmt.Errorf("%s: execute statement: %w", op, err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return  0, fmt.Errorf("%s: failed to get last insert id: %w", op, err)
+	}
+
+	// Возвращаем ID
+	return id, nil
+}
+// func (s *Storage) GetDrugCount() (int, error) {
+// 	const op = "storage.sqlite.GetDrugCount"
+
+
+// 	return 0, nil
+// }
