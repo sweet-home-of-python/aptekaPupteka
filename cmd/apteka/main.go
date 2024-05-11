@@ -2,9 +2,11 @@ package main
 
 import (
 	"aptekaPupteka/internal/config"
+	"aptekaPupteka/internal/http-server/handlers/url/save"
 	"aptekaPupteka/internal/storage/sqlite"
 	"aptekaPupteka/lib/logger/sl"
 	"log/slog"
+	"net/http"
 	"os"
 
 	"github.com/go-chi/chi"
@@ -34,11 +36,27 @@ func main() {
 	// 	log.Error("failed to save drug", sl.Err(err))
 	// 	os.Exit(1)
 	// }
+
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID)
 	router.Use(middleware.Logger)    // Логирование всех запросов
 	router.Use(middleware.Recoverer) // Если где-то внутри сервера (обработчика запроса) произойдет паника, приложение не должно упасть
 	router.Use(middleware.URLFormat) // Парсер URLов поступающих запросов
+	router.Post("/drug", save.New(log, storage))
+
+	log.Info("starting server", slog.String("adress", cfg.Address))
+
+	srv := &http.Server{
+		Addr:         cfg.Address,
+		Handler:      router,
+		ReadTimeout:  cfg.HTTPServer.Timeout,
+		WriteTimeout: cfg.HTTPServer.Timeout,
+		IdleTimeout:  cfg.HTTPServer.IdleTimeout,
+	}
+	if err := srv.ListenAndServe(); err != nil {
+		log.Error("failed to start server")
+	}
+	log.Error("server stopped!")
 
 }
 
