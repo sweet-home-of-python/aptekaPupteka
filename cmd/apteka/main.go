@@ -43,7 +43,9 @@ func main() {
 	router.Use(middleware.Recoverer) // Если где-то внутри сервера (обработчика запроса) произойдет паника, приложение не должно упасть
 	router.Use(middleware.URLFormat) // Парсер URLов поступающих запросов
 	router.Post("/drug", save.New(log, storage))
-
+	router.Handle("/g", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./cmd/apteka/index.html")
+	}))
 	log.Info("starting server", slog.String("adress", cfg.Address))
 
 	srv := &http.Server{
@@ -59,6 +61,12 @@ func main() {
 	log.Error("server stopped!")
 
 }
+
+// func startPage(router *chi.Mux)http.HandlerFunc{
+// 	return func(w http.ResponseWriter, r *http.Request) {
+		
+// 	}
+// }
 
 func setupLogger(env string) *slog.Logger {
 	var log *slog.Logger

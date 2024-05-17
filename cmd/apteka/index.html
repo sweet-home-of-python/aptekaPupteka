@@ -1,0 +1,42 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JSON GET Request</title>
+</head>
+<body>
+
+<!-- Текстовое поле для ввода данных -->
+<input type="text" id="data" placeholder="Введите данные здесь...">
+
+<!-- Кнопка для отправки запроса -->
+<button onclick="sendRequest()">Отправить</button>
+
+<script>
+// Функция для отправки GET-запроса
+function sendRequest() {
+  // Получаем значение из текстового поля
+  var data = document.getElementById('data').value;
+  
+  // Преобразуем данные в JSON
+  var jsonData = JSON.stringify({ "data": data });
+  
+  // Создаем объект URLSearchParams для кодирования JSON в строку запроса
+  var params = new URLSearchParams();
+  params.append("jsonData", jsonData);
+  
+  // Формируем URL с параметрами
+  var url = "/bob" + params.toString();
+  
+  // Отправляем GET-запрос
+  fetch(url)
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Ошибка:', error));
+}
+</script>
+
+</body>
+</html>
