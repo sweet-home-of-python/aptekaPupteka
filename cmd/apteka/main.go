@@ -26,26 +26,22 @@ func main() {
 	log.Info("starting url", slog.String("adress", cfg.Address))
 	log.Debug("debug message enabled")
 	storage, err := sqlite.New(cfg.StoragePath)
-	_ = storage
+	// _ = storage
 	if err != nil {
 		log.Error("failed to initialize storage", sl.Err(err))
 		os.Exit(1)
 	}
-	// id, err := storage.SaveDrug("banan2")
-	// if err != nil {
-	// 	log.Error("failed to save drug", sl.Err(err))
-	// 	os.Exit(1)
-	// }
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID)
 	router.Use(middleware.Logger)    // Логирование всех запросов
 	router.Use(middleware.Recoverer) // Если где-то внутри сервера (обработчика запроса) произойдет паника, приложение не должно упасть
 	router.Use(middleware.URLFormat) // Парсер URLов поступающих запросов
-	router.Post("/drug", save.New(log, storage))
-	router.Handle("/g", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./cmd/apteka/index.html")
-	}))
+	router.Post("/newDrug", save.New(log, storage))
+	router.Post("/addDrug", save.Add(log, storage))
+	// router.Handle("/g", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// 	http.ServeFile(w, r, "./cmd/apteka/index.html")
+	// }))
 	log.Info("starting server", slog.String("adress", cfg.Address))
 
 	srv := &http.Server{
