@@ -2,7 +2,7 @@ package main
 
 import (
 	"aptekaPupteka/internal/config"
-	"aptekaPupteka/internal/http-server/handlers/url/save"
+	"aptekaPupteka/internal/http-server/handlers/drug"
 	"aptekaPupteka/internal/storage/sqlite"
 	"aptekaPupteka/lib/logger/sl"
 	"log/slog"
@@ -37,8 +37,11 @@ func main() {
 	router.Use(middleware.Logger)    // Логирование всех запросов
 	router.Use(middleware.Recoverer) // Если где-то внутри сервера (обработчика запроса) произойдет паника, приложение не должно упасть
 	router.Use(middleware.URLFormat) // Парсер URLов поступающих запросов
-	router.Post("/newDrug", save.New(log, storage))
-	router.Post("/addDrug", save.Add(log, storage))
+	router.Post("/newDrug", drug.New(log, storage))
+	router.Post("/addDrug", drug.Add(log, storage))
+	router.Post("/subDrug", drug.Sub(log, storage))
+	router.Get("/getDrugs", drug.GetAll(log, storage))
+	router.Post("/deleteDrug", drug.Delete(log, storage))
 	// router.Handle("/g", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	// 	http.ServeFile(w, r, "./cmd/apteka/index.html")
 	// }))

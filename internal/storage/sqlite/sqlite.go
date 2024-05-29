@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"aptekaPupteka/internal/storage"
+	"errors"
 	"fmt"
 
 	"gorm.io/driver/sqlite"
@@ -11,7 +12,7 @@ import (
 type Drugs struct {
     gorm.Model
     Name   string `gorm:"size:255; unique"`
-    Count    uint16    `gorm:"default:0; type:int"`
+    Count    int32    `gorm:"default:0; type:int32"`
 }
 
 type Storage struct {
@@ -23,11 +24,11 @@ func New(storagePath string) (*Storage, error) {
 
 	db, err := gorm.Open(sqlite.Open(storagePath), &gorm.Config{TranslateError: true})
 	if err != nil{
-		fmt.Errorf("failed to connect database: %v", op, err)
+		return nil, fmt.Errorf("failed to create database: %s: %w", op, err)
 	}
 	err = db.AutoMigrate(&Drugs{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to migrate database: %v", op, err)
+		return nil, fmt.Errorf("failed to migrate table: %s: %w", op, err)
 	}
 	return &Storage{db: db}, nil
 }
@@ -48,91 +49,102 @@ func (s *Storage) NewDrug(drugToSave string) (uint, error) {
 	return id, nil	
 }
 
-func (s *Storage) AddDrug(drugName string, count uint16) (uint, error) {
+func (s *Storage) AddDrug(drugName string, count int32) (uint, error) {
 	const op = "storage.sqlite.AddDrug"
 	var drug Drugs
 	err := s.db.Where("name = ?", drugName).First(&drug).Error
 	if err != nil {
 		
-		return 0, fmt.Errorf("%s: error save drug %w", op, err)
+		return 0, fmt.Errorf("%s: error add drug %w", op, err)
 	}
 	
 	newCount := drug.Count + count
+	if(newCount > 65500){
+		err := errors.New("can not add, drugs will empty")
+		fmt.Errorf("%s: can not add, drugs will full! %w", op, err)
+		return 0, err
+	}
 	err = s.db.Model(&drug).Where("name = ?", drugName).Update("count", newCount).Error
 	if err != nil {
 		
-			return 0, fmt.Errorf("%s: error save drug %w", op, err)
+			return 0, fmt.Errorf("%s: error add drug %w", op, err)
+		}
+	return drug.ID, nil	
+}
+func (s *Storage) SubDrug(drugName string, count int32) (uint, error) {
+	const op = "storage.sqlite.SubDrug"
+	var drug Drugs
+	err := s.db.Where("name = ?", drugName).First(&drug).Error
+	if err != nil {
+		
+		return 0, fmt.Errorf("%s: error sub drug %w", op, err)
+	}
+	
+	newCount := drug.Count - count
+	if(newCount < 0){
+		err := errors.New("can not take, drugs will empty")
+		fmt.Errorf("%s: can not take, drugs will empty! %w", op, err)
+		return 0, err
+	}
+	err = s.db.Model(&drug).Where("name = ?", drugName).Update("count", newCount).Error
+	if err != nil {
+			fmt.Errorf("%s: error sub drug %w", op, err)
+			return 0, err
 		}
 	return drug.ID, nil	
 }
 
-// func (s *Storage) AddDrugCount(drug string, count int)( int64 , error){
-// 	const op = "storage.sqlite.addDrugCount"
-// 	var resultCount int
-// 	_ = resultCount
-// 	stmt, err := s.db.Prepare("UPDATE med SET count = count +? WHERE name = ?")
-// 	if err != nil {
-// 		return 0, fmt.Errorf("%s: prepare statement: %w", op, err)
-// 	}
-// 	res, err := stmt.Exec(count, drug)
-// 	if err != nil {
-// 		if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-// 			return  0, fmt.Errorf("%s: %w", op, storage.ErrDrugExist)
-// 		}
-
-// 		return  0, fmt.Errorf("%s: execute statement: %w", op, err)
-// 	}
-// 	id, err := res.LastInsertId()
-// 	if err != nil {
-// 		return  0, fmt.Errorf("%s: failed to get last insert id: %w", op, err)
-// 	}
-
-// 	// Возвращаем ID
-// 	return id, nil
-// }
-
-// func (s *Storage) TakeDrugCount(drug string, count int)( int64 , error){
-// 	const op = "storage.sqlite.TakeDrugCount"
-// 	stmt, err := s.db.Prepare("UPDATE med SET count = count - ? WHERE name = ?")
-// 	if err != nil{
-// 		return 0, fmt.Errorf("%s: prepare statement: %w", op, err)
-// 	}
-
-// 	res, err:= stmt.Exec(count, drug)
-// 	if err != nil{
-// 		return 0, fmt.Errorf("%s: execute statement: %w", op, err)
-// 	}
-// 	id, err := res.LastInsertId()
-// 	if err != nil{
-// 		return 0, fmt.Errorf("%s: failed to get last insert id: %w", op, err)
-// 	}
-// 	return id, nil
-
-// }
-
-// func (s *Storage) DeleteDrug(drug string)(int64, error){
-// 	const op = "storage.sqlite.DeleteDrug"
+func (s *Storage) GetAllDrugs() ([]Drugs, error) {
+	const op = "storage.sqlite.SubDrug"
+	var drugs []Drugs
+	err :=  s.db.Find(&drugs)
+	drugList := map[string]int{}
+	for _, i := range drugs {
+		drugList[i.Name] = int(i.Count)
+	}
+	if err != nil {
+		
+		return drugs, fmt.Errorf("%s: error sub drug %w", op, err)
+	}
 	
-// 	stmt, err := s.db.Prepare("DELETE FROM med WHERE name = ?")
-// 	if err != nil{
-// 		return 0, fmt.Errorf("%s: failed to get last insert id: %w", op, err)
-// 	}
+	// newCount := drug.Count - count
+	// if(newCount < 0){
+	// 	err := errors.New("can not take, drugs will empty")
+	// 	fmt.Errorf("%s: can not take, drugs will empty! %w", op, err)
+	// 	return 0, err
+	// }
+	
+	if err != nil {
+		
+			return drugs, fmt.Errorf("%s: error sub drug %w", op, err)
+		}
+	return drugs, nil	
+}
 
-// 	res, err := stmt.Exec(drug)
-// 	if err != nil{
-// 		return 0, fmt.Errorf("%s: failed to get last insert id: %w", op, err)
-// 	}
+func (s *Storage) DeleteDrug(drugToDelete string) (uint, error) {
+	const op = "storage.sqlite.NewDrug"
+	var drug Drugs
+	result := s.db.Where("name = ?", drugToDelete).First(&drug)
+	if result.Error != nil {
+	if result.Error == gorm.ErrRecordNotFound {
+		fmt.Errorf("%s: drug not exist %w", op, result.Error)
+		return 0, result.Error
+	} else {
+		return 0, result.Error
+	}
+	}else{
+		err := s.db.Where("name = ?", drugToDelete).Delete(&drug).Error
+		if err == gorm.ErrRecordNotFound{
+			fmt.Errorf("%s: drug not exist %w", op, err)
+			return 0, err
+		}
+		if err != nil {
+			return 0, fmt.Errorf("%s: error delete drug %w", op, err)
+		}
+		id := drug.ID	
+		return id, nil	
+	}
+	
+	return 0, nil	
+}
 
-// 	id, err := res.LastInsertId()
-// 	if err != nil{
-// 		return 0, fmt.Errorf("%s: failed to get last insert id: %w", op, err)
-// 	}
-// 	return id, nil
-// }
-
-// func (s *Storage) GetDrugCount() (int, error) {
-// 	const op = "storage.sqlite.GetDrugCount"
-
-
-// 	return 0, nil
-// }
