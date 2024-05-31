@@ -18,11 +18,20 @@ type Request struct {
 	Drug string `json:"drug"`
 	Count int32 `json:"count"`
 }
+type Request2 struct {
+	Page int `json:"page"`
+	Limit int `json:"limit"`
+}
 
 type Response struct {
 	Status string `json:"status"`
 	Error  string `json:"error,omitempty"`
 	Count  string `json:"count"`
+}
+
+type Response2 struct {
+	Name string `json:"name"`
+	Quantity int32 `json:"quantity"`
 }
 
 type DrugSaver interface {
@@ -39,6 +48,10 @@ type DrugScrubber interface {
 }
 type DrugDeleter interface {
 	DeleteDrug(name string) (uint, error)
+}
+
+type PageGetter interface {
+	GetPage(page int, limit int) ([]sqlite.Drugs, error)
 }
 
 func New(log *slog.Logger, drugSaver DrugSaver) http.HandlerFunc {
@@ -254,5 +267,40 @@ func Delete(log *slog.Logger, drugDeleter DrugDeleter) http.HandlerFunc {
 		}
 		log.Info("drug  petuh", "id", id)
 		render.JSON(w, r, "tak to zaebis udalil")
+	}
+}
+func GetPage(log *slog.Logger, pageGetter PageGetter) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const op = "handlers.url.save.GetPage"
+
+		// Добавляем к текущму объекту логгера поля op и request_id
+		// Они могут очень упростить нам жизнь в будущем
+		log = log.With(
+			slog.String("op", op),
+			slog.String("request_id", middleware.GetReqID(r.Context())),
+		)
+
+		var req Request2
+
+		err := render.DecodeJSON(r.Body, &req)
+
+		if err != nil{
+
+			log.Error("failed to decode request body", sl.Err(err))
+			render.JSON(w, r, "failed to decode request")
+			return
+		}
+		list, err := pageGetter.GetPage(req.Page, req.Limit)
+		var resp []Response2
+		if err != nil {
+			log.Error("failed get page", sl.Err(err))
+			render.JSON(w, r, "da sosi to page")
+			return
+		}
+		for _, v := range list {
+			resp = append(resp, Response2{Name: v.Name, Quantity: v.Count})
+		}
+		log.Info("page gotov")
+		render.JSON(w, r, resp)
 	}
 }

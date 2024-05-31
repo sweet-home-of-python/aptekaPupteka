@@ -42,9 +42,13 @@ func main() {
 	router.Post("/subDrug", drug.Sub(log, storage))
 	router.Get("/getDrugs", drug.GetAll(log, storage))
 	router.Post("/deleteDrug", drug.Delete(log, storage))
-	// router.Handle("/g", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// 	http.ServeFile(w, r, "./cmd/apteka/index.html")
-	// }))
+	router.Post("/getPage", drug.GetPage(log, storage))
+
+	router.Handle("/*", http.FileServer(http.Dir("./cmd/apteka/static/")))
+	router.Get("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./cmd/apteka/static/index.html")
+	}))
+
 	log.Info("starting server", slog.String("adress", cfg.Address))
 
 	srv := &http.Server{

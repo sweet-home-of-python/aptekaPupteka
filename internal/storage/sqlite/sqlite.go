@@ -147,4 +147,20 @@ func (s *Storage) DeleteDrug(drugToDelete string) (uint, error) {
 	
 	return 0, nil	
 }
+func (s *Storage) GetPage(page int, limit int) ([]Drugs, error){
+	const op = "storage.sqlite.GetPage"
+	var drugs []Drugs
+    err := s.db.Offset(page * limit).Limit(limit).Find(&drugs).Error
+	if err != nil {
+		
+		return drugs, fmt.Errorf("%s: error get page %w", op, err)
+	}
+
+	if err != nil {
+		
+			return drugs, fmt.Errorf("%s: error get page %w", op, err)
+		}
+	return drugs, nil	
+}
+
 
