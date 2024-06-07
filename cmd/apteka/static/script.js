@@ -18,27 +18,28 @@ document.addEventListener('DOMContentLoaded', () => {
     let adjustAction = '';
 
     function fetchMedications(page = currentPage, limit = itemsPerPage) {
-    const url = '/getPage';
+        const url = '/getPage';
 
-    const requestData = {
-        page: page,
-        limit: limit
-    };
+        const requestData = {
+            page: page,
+            limit: limit
+        };
 
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        medications = data;
-        renderMedications();
-    })
-    .catch(error => console.error('Error fetching medications:', error));
-}
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            medications = data;
+            renderMedications();
+            updatePaginationControls();
+        })
+        .catch(error => console.error('Error fetching medications:', error));
+    }
 
     function renderMedications() {
         medicationsList.innerHTML = '';
@@ -47,23 +48,24 @@ document.addEventListener('DOMContentLoaded', () => {
             row.innerHTML = `
                 <td>${medication.name}</td>
                 <td>${medication.quantity}</td>
-                
-
                 <td>
-                  
-                    <button onclick="deleteMedication(\'${medication.name}\')">Удалить</button>
-                    <button onclick="showAdjustModal(\'${medication.name}\', 'add')">Добавить</button>
-
+                    <button onclick="deleteMedication('${medication.name}')">Удалить</button>
+                    <button onclick="showAdjustModal('${medication.name}', 'add')">Добавить</button>
+                    <button onclick="showAdjustModal('${medication.name}', 'sub')">Забрать</button>
                 </td>
-                
             `;
             medicationsList.appendChild(row);
         });
         pageIndicator.textContent = `Страница ${currentPage}`;
     }
 
+    function updatePaginationControls() {
+        prevPage.disabled = currentPage === 0;
+        nextPage.disabled = medications.length < itemsPerPage;
+    }
+
     searchInput.addEventListener('input', () => {
-        fetchMedications(searchInput.value, currentPage);
+        fetchMedications(currentPage, itemsPerPage);
     });
 
     addBtn.addEventListener('click', () => {
@@ -85,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(medicationForm);
         const medication = {
             drug: formData.get('name'),
+            count: Number(formData.get('quantity')),
         };
 
         fetch('http://localhost:8082/newDrug', {
@@ -100,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .then(() => {
             modal.style.display = 'none';
-            fetchMedications(searchInput.value, currentPage);
+            fetchMedications(currentPage, 5);
         })
         .catch(error => {
             console.error('Error:', error);  // Логирование ошибок
@@ -108,15 +111,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     prevPage.addEventListener('click', () => {
-        if (currentPage > 1) {
+        if (currentPage > 0) {
             currentPage--;
-            fetchMedications(searchInput.value, currentPage);
+            fetchMedications(currentPage, itemsPerPage);
         }
     });
 
     nextPage.addEventListener('click', () => {
-        currentPage++;
-        fetchMedications(searchInput.value, currentPage);
+        if (medications.length === itemsPerPage) {
+            currentPage++;
+            fetchMedications(currentPage, itemsPerPage);
+        }
     });
 
     window.editMedication = (id) => {
@@ -143,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(response => response.json())
                 .then(() => {
                     modal.style.display = 'none';
-                    fetchMedications(searchInput.value, currentPage);
+                    fetchMedications(currentPage, 5);
                 })
                 .catch(error => {
                     console.error('Error updating medication:', error);  // Логирование ошибок
@@ -155,19 +160,19 @@ document.addEventListener('DOMContentLoaded', () => {
     window.deleteMedication = (name) => {
         if (confirm('Вы уверены, что хотите удалить этот медикамент?')) {
             fetch('/deleteDrug', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ drug: name })
-        })
-        .then(response => response.json())
-        .then(() => {
-            fetchMedications(currentPage, 5);
-        })
-        .catch(error => {
-            console.error('Error deleting medication:', error);
-        });
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ drug: name })
+            })
+            .then(response => response.json())
+            .then(() => {
+                fetchMedications(currentPage, 5);
+            })
+            .catch(error => {
+                console.error('Error deleting medication:', error);
+            });
         }
     };
 
@@ -180,20 +185,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     adjustForm.addEventListener('submit', (event) => {
         event.preventDefault();
-        const adjustQuantity = document.getElementById('adjustQuantity').value;
-        const url = `http://yourapi.com/medications/${adjustMedicationId}/${adjustAction}`;
+        const adjustQuantity = Number(document.getElementById('adjustQuantity').value);
+        const medication = {
+            drug: adjustMedicationId,
+            count: adjustQuantity,
+        };
+
+        const url = adjustAction === 'sub' ? '/subDrug' : '/addDrug';
 
         fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ quantity: adjustQuantity })
+            body: JSON.stringify(medication)
         })
         .then(response => response.json())
         .then(() => {
             adjustModal.style.display = 'none';
-            fetchMedications(searchInput.value, currentPage);
+            fetchMedications(currentPage, 5);
         })
         .catch(error => {
             console.error('Error adjusting medication:', error);  // Логирование ошибок

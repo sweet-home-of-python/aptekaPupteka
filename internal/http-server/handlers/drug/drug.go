@@ -15,11 +15,11 @@ import (
 )
 
 type Request struct {
-	Drug string `json:"drug"`
-	Count int32 `json:"count"`
+	Drug  string `json:"drug"`
+	Count int32  `json:"count"`
 }
 type Request2 struct {
-	Page int `json:"page"`
+	Page  int `json:"page"`
 	Limit int `json:"limit"`
 }
 
@@ -30,12 +30,12 @@ type Response struct {
 }
 
 type Response2 struct {
-	Name string `json:"name"`
-	Quantity int32 `json:"quantity"`
+	Name     string `json:"name"`
+	Quantity int32  `json:"quantity"`
 }
 
 type DrugSaver interface {
-	NewDrug(drugToSave string) (uint, error)
+	NewDrug(drugToSave string, count int32) (uint, error)
 }
 type DrugAdder interface {
 	AddDrug(name string, count int32) (uint, error)
@@ -58,20 +58,14 @@ func New(log *slog.Logger, drugSaver DrugSaver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.save.New"
 
-		// Добавляем к текущму объекту логгера поля op и request_id
-		// Они могут очень упростить нам жизнь в будущем
 		log = log.With(
 			slog.String("op", op),
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
-
-		// Создаем объект запроса и анмаршаллим в него запрос
 		var req Request
 
 		err := render.DecodeJSON(r.Body, &req)
 		if errors.Is(err, io.EOF) {
-			// Такую ошибку встретим, если получили запрос с пустым телом
-			// Обработаем её отдельно
 			log.Error("request body is empty")
 
 			render.JSON(w, r, "empty request")
@@ -83,9 +77,6 @@ func New(log *slog.Logger, drugSaver DrugSaver) http.HandlerFunc {
 			render.JSON(w, r, "failed to decode request")
 			return
 		}
-
-		// Лучше больше логов, чем меньше - лишнее мы легко сможем почистить,
-		// при необходимости. А вот недостающую информацию мы уже не получим.
 		log.Info("request body decoded", slog.Any("req", req))
 
 		if err := validator.New().Struct(req); err != nil {
@@ -93,7 +84,7 @@ func New(log *slog.Logger, drugSaver DrugSaver) http.HandlerFunc {
 			render.JSON(w, r, "invalid request")
 			return
 		}
-		id, err := drugSaver.NewDrug(req.Drug)
+		id, err := drugSaver.NewDrug(req.Drug, req.Count)
 		if errors.Is(err, storage.ErrDrugExist) {
 			log.Info("drug already exist", slog.String("drug", req.Drug))
 			render.JSON(w, r, "drug already exist")
@@ -252,7 +243,7 @@ func Delete(log *slog.Logger, drugDeleter DrugDeleter) http.HandlerFunc {
 		var req Request
 
 		err := render.DecodeJSON(r.Body, &req)
-		if err != nil{
+		if err != nil {
 
 			log.Error("failed to decode request body", sl.Err(err))
 			render.JSON(w, r, "failed to decode request")
@@ -260,7 +251,7 @@ func Delete(log *slog.Logger, drugDeleter DrugDeleter) http.HandlerFunc {
 		}
 		id, err := drugDeleter.DeleteDrug(req.Drug)
 
-		if err  != nil{
+		if err != nil {
 			log.Error("failed to delete drug", sl.Err(err))
 			render.JSON(w, r, err.Error())
 			return
@@ -284,7 +275,7 @@ func GetPage(log *slog.Logger, pageGetter PageGetter) http.HandlerFunc {
 
 		err := render.DecodeJSON(r.Body, &req)
 
-		if err != nil{
+		if err != nil {
 
 			log.Error("failed to decode request body", sl.Err(err))
 			render.JSON(w, r, "failed to decode request")

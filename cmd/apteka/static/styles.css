@@ -22,6 +22,7 @@ header {
 
 header h1 {
     color: #0077b6;
+    margin: 20px;
 }
 
 input[type="text"], input[type="number"] {
