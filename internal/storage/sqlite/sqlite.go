@@ -9,34 +9,47 @@ import (
 	"gorm.io/gorm"
 )
 
+// объявляем структуру наркотика представляющую собой схему для ОРМ
+
 type Drugs struct {
-	gorm.Model
-	Name  string `gorm:"size:255; unique"`
-	Count int32  `gorm:"default:0; type:int32"`
+	gorm.Model        // наследуем параметры схемы от стандартных gorm
+	Name       string `gorm:"size:255; unique"`      // имя наркотика
+	Count      int32  `gorm:"default:0; type:int32"` // количество наркотика
 }
 
+// создаем стуктуру харилища, будет хранить db
 type Storage struct {
 	db *gorm.DB
 }
 
+// инициализируем базу, функция возвращает указатель на хранилище
 func New(storagePath string) (*Storage, error) {
-	const op = "storage.sqlite.NewStorage"
+	const op = "storage.sqlite.NewStorage" // метка для отладки
 
-	db, err := gorm.Open(sqlite.Open(storagePath), &gorm.Config{TranslateError: true})
+	db, err := gorm.Open(sqlite.Open(storagePath), &gorm.Config{TranslateError: true}) // открываем базу если нет то создаем и открываем, конфигом задаем трансляцию ошибок для sqlite
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create database: %s: %w", op, err)
 	}
-	err = db.AutoMigrate(&Drugs{})
+
+	err = db.AutoMigrate(&Drugs{}) // мигрируем таблицу
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to migrate table: %s: %w", op, err)
 	}
+
 	return &Storage{db: db}, nil
 }
 
-func (s *Storage) NewDrug(drugToSave string, count int32) (uint, error) {
+// метод хранилища для создания нового наркотика, добавляет в базу наркотик с новым именем drugToSave в количестве count
+
+func (s *Storage) NewDrug(drugName string, count int32) (uint, error) {
 	const op = "storage.sqlite.NewDrug"
-	drug := Drugs{Name: drugToSave, Count: count}
+
+	drug := Drugs{Name: drugName, Count: count}
+
 	err := s.db.Create(&drug).Error
+
 	if err != nil {
 		if err == gorm.ErrDuplicatedKey {
 			return 0, fmt.Errorf("%s: %w", op, storage.ErrDrugExist)
@@ -46,78 +59,86 @@ func (s *Storage) NewDrug(drugToSave string, count int32) (uint, error) {
 
 	}
 	id := drug.ID
-	return id, nil
+
+	return id, nil // возвращаем id записи
 }
+
+// метод хранилища для того чтобы увеличить количество конкретного наркотика
 
 func (s *Storage) AddDrug(drugName string, count int32) (uint, error) {
 	const op = "storage.sqlite.AddDrug"
+
 	var drug Drugs
+
 	err := s.db.Where("name = ?", drugName).First(&drug).Error
+
 	if err != nil {
 
 		return 0, fmt.Errorf("%s: error add drug %w", op, err)
 	}
 
-	newCount := drug.Count + count
-	if newCount > 65500 {
-		err := errors.New("can not add, drugs will empty")
-		fmt.Errorf("%s: can not add, drugs will full! %w", op, err)
+	newCount := drug.Count + count // новое, пересчитанное количество наркотиков
+
+	if newCount > 65500 { // ограничиваем верхний порог
+		err := errors.New("can not add, drugs will full!")
+		fmt.Errorf("%s: drug add error:  %w", op, err)
 		return 0, err
 	}
+
 	err = s.db.Model(&drug).Where("name = ?", drugName).Update("count", newCount).Error
+
 	if err != nil {
 
-		return 0, fmt.Errorf("%s: error add drug %w", op, err)
+		return 0, fmt.Errorf("%s: error updating after add: %w", op, err)
 	}
-	return drug.ID, nil
+
+	return drug.ID, nil // также возвращаем id как и всегда
 }
+
+// метод хранилища для того чтобы забрать некоторое количество конкретного наркотика
+
 func (s *Storage) SubDrug(drugName string, count int32) (uint, error) {
 	const op = "storage.sqlite.SubDrug"
-	var drug Drugs
-	err := s.db.Where("name = ?", drugName).First(&drug).Error
-	if err != nil {
 
-		return 0, fmt.Errorf("%s: error sub drug %w", op, err)
+	var drug Drugs
+
+	err := s.db.Where("name = ?", drugName).First(&drug).Error
+
+	if err != nil {
+		return 0, fmt.Errorf("%s: error find drug for substraction: %w", op, err)
 	}
 
 	newCount := drug.Count - count
-	if newCount < 0 {
-		err := errors.New("can not take, drugs will empty")
-		fmt.Errorf("%s: can not take, drugs will empty! %w", op, err)
+
+	if newCount < 0 { // нельзя забрать больше 0
+		err := errors.New("can not take, drugs will empty!")
+		fmt.Errorf("%s: drug take error: %w", op, err)
 		return 0, err
 	}
+
 	err = s.db.Model(&drug).Where("name = ?", drugName).Update("count", newCount).Error
+
 	if err != nil {
-		fmt.Errorf("%s: error sub drug %w", op, err)
+		fmt.Errorf("%s: error updating after sub: %w", op, err)
 		return 0, err
 	}
+
 	return drug.ID, nil
 }
 
+// метод хранилища для получения всех наркотиков
+
 func (s *Storage) GetAllDrugs() ([]Drugs, error) {
 	const op = "storage.sqlite.SubDrug"
-	var drugs []Drugs
+
+	var drugs []Drugs // список всех наркотиков для вывода
+
 	err := s.db.Find(&drugs)
-	drugList := map[string]int{}
-	for _, i := range drugs {
-		drugList[i.Name] = int(i.Count)
-	}
 	if err != nil {
 
-		return drugs, fmt.Errorf("%s: error sub drug %w", op, err)
+		return drugs, fmt.Errorf("%s: error find drugs in db: %w", op, err)
 	}
 
-	// newCount := drug.Count - count
-	// if(newCount < 0){
-	// 	err := errors.New("can not take, drugs will empty")
-	// 	fmt.Errorf("%s: can not take, drugs will empty! %w", op, err)
-	// 	return 0, err
-	// }
-
-	if err != nil {
-
-		return drugs, fmt.Errorf("%s: error sub drug %w", op, err)
-	}
 	return drugs, nil
 }
 

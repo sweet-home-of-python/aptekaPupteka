@@ -23,24 +23,24 @@ type HTTPServer struct {
 // internal/config/config.go
 
 func MustLoad() *Config {
-    // Получаем путь до конфиг-файла из env-переменной CONFIG_PATH
-    configPath := os.Getenv("CONFIG_PATH")
-    if configPath == "" {
-        log.Fatal("CONFIG_PATH environment variable is not set")
-    }
+	// Получаем путь до конфиг-файла из env-переменной CONFIG_PATH
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		log.Fatal("CONFIG_PATH environment variable is not set")
+	}
 
-    // Проверяем существование конфиг-файла
-    if _, err := os.Stat(configPath); err != nil {
-        log.Fatalf("error opening config file: %s", err)
-    }
+	// Проверяем существование конфиг-файла
+	if _, err := os.Stat(configPath); err != nil {
+		log.Fatalf("error opening config file: %s", err)
+	}
 
-    var cfg Config
+	var cfg Config
 
-    // Читаем конфиг-файл и заполняем нашу структуру
-    err := cleanenv.ReadConfig(configPath, &cfg)
-    if err != nil {
-        log.Fatalf("error reading config file: %s", err)
-    }
+	// Читаем конфиг-файл и заполняем нашу структуру
+	err := cleanenv.ReadConfig(configPath, &cfg)
+	if err != nil {
+		log.Fatalf("error reading config file: %s", err)
+	}
 
-    return &cfg
+	return &cfg
 }
