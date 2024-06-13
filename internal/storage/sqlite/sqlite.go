@@ -142,44 +142,56 @@ func (s *Storage) GetAllDrugs() ([]Drugs, error) {
 	return drugs, nil
 }
 
+// метод хранилища для удаления конкретного наркотика
+
 func (s *Storage) DeleteDrug(drugToDelete string) (uint, error) {
 	const op = "storage.sqlite.NewDrug"
+
 	var drug Drugs
-	result := s.db.Where("name = ?", drugToDelete).First(&drug)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			fmt.Errorf("%s: drug not exist %w", op, result.Error)
-			return 0, result.Error
-		} else {
-			return 0, result.Error
-		}
-	} else {
-		err := s.db.Where("name = ?", drugToDelete).Delete(&drug).Error
+
+	err := s.db.Where("name = ?", drugToDelete).First(&drug).Error
+
+	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			fmt.Errorf("%s: drug not exist %w", op, err)
+			fmt.Errorf("%s: drug not exist: %w", op, err)
+			return 0, err
+		} else {
 			return 0, err
 		}
-		if err != nil {
-			return 0, fmt.Errorf("%s: error delete drug %w", op, err)
-		}
-		id := drug.ID
-		return id, nil
 	}
 
-	return 0, nil
+	err = s.db.Where("name = ?", drugToDelete).Delete(&drug).Error
+	if err != nil {
+		return 0, fmt.Errorf("%s: error delete drug: %w", op, err)
+	}
+
+	id := drug.ID
+	return id, nil
 }
+
+// метод хранилища для получения страницы
 func (s *Storage) GetPage(page int, limit int) ([]Drugs, error) {
 	const op = "storage.sqlite.GetPage"
+
 	var drugs []Drugs
+
 	err := s.db.Offset(page * limit).Limit(limit).Find(&drugs).Error
-	if err != nil {
-
-		return drugs, fmt.Errorf("%s: error get page %w", op, err)
-	}
 
 	if err != nil {
 
-		return drugs, fmt.Errorf("%s: error get page %w", op, err)
+		return drugs, fmt.Errorf("%s: error get page: %w", op, err)
 	}
+	return drugs, nil
+}
+
+func (s *Storage) SearchDrug(drugName string) ([]Drugs, error) {
+	const op = "storage.sqlite.GetPage"
+
+	var drugs []Drugs
+
+	err := s.db.Where("name LIKE ?", drugName+"%").Find(&drugs).Error
+	if err != nil{
+	}
+
 	return drugs, nil
 }

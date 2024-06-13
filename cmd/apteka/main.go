@@ -19,6 +19,7 @@ const (
 	envProd  = "prod"
 )
 
+
 func main() {
 	cfg := config.MustLoad()
 	log := setupLogger(cfg.Env)
@@ -26,23 +27,29 @@ func main() {
 	log.Info("starting url", slog.String("adress", cfg.Address))
 	log.Debug("debug message enabled")
 	storage, err := sqlite.New(cfg.StoragePath)
-	// _ = storage
+
 	if err != nil {
-		log.Error("failed to initialize storage", sl.Err(err))
+		log.Error("failed to initialize storage:", sl.Err(err))
 		os.Exit(1)
 	}
 
+	authenticator := middleware.BasicAuth("realm", map[string]string{
+		"yarik": "30sm",
+	})
+
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID)
+	router.Use(authenticator)
 	router.Use(middleware.Logger)    // Логирование всех запросов
 	router.Use(middleware.Recoverer) // Если где-то внутри сервера (обработчика запроса) произойдет паника, приложение не должно упасть
 	router.Use(middleware.URLFormat) // Парсер URLов поступающих запросов
-	router.Post("/newDrug", drug.New(log, storage))
-	router.Post("/addDrug", drug.Add(log, storage))
-	router.Post("/subDrug", drug.Sub(log, storage))
-	router.Get("/getDrugs", drug.GetAll(log, storage))
-	router.Post("/deleteDrug", drug.Delete(log, storage))
-	router.Post("/getPage", drug.GetPage(log, storage))
+	router.Post("/api/newDrug", drug.New(log, storage))
+	router.Post("/api/addDrug", drug.Add(log, storage))
+	router.Post("/api/subDrug", drug.Sub(log, storage))
+	router.Get("/api/getDrugs", drug.GetAll(log, storage))
+	router.Post("/api/deleteDrug", drug.Delete(log, storage))
+	router.Post("/api/getPage", drug.GetPage(log, storage))
+	router.Post("/api/searchDrug", drug.Search(log, storage))
 
 	router.Handle("/*", http.FileServer(http.Dir("./cmd/apteka/static/")))
 	router.Get("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -64,12 +71,6 @@ func main() {
 	log.Error("server stopped!")
 
 }
-
-// func startPage(router *chi.Mux)http.HandlerFunc{
-// 	return func(w http.ResponseWriter, r *http.Request) {
-
-// 	}
-// }
 
 func setupLogger(env string) *slog.Logger {
 	var log *slog.Logger

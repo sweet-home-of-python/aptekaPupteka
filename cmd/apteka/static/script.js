@@ -2,11 +2,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const medicationsList = document.getElementById('medicationsList');
     const searchInput = document.getElementById('search');
     const addBtn = document.getElementById('addBtn');
+    const authBtn = document.getElementById('authBtn');
     const modal = document.getElementById('modal');
     const adjustModal = document.getElementById('adjustModal');
+    const authModal = document.getElementById('authModal');
     const closeBtns = document.querySelectorAll('.close');
     const medicationForm = document.getElementById('medicationForm');
     const adjustForm = document.getElementById('adjustForm');
+    const authForm = document.getElementById('authForm');
     const prevPage = document.getElementById('prevPage');
     const nextPage = document.getElementById('nextPage');
     const pageIndicator = document.getElementById('pageIndicator');
@@ -17,15 +20,60 @@ document.addEventListener('DOMContentLoaded', () => {
     let adjustMedicationId = null;
     let adjustAction = '';
 
-    function fetchMedications(page = currentPage, limit = itemsPerPage) {
-        const url = '/getPage';
+    let authData = null; // Данные авторизации
 
-        const requestData = {
-            page: page,
-            limit: limit
+    // Добавляем обработчик для кнопки авторизации
+    authBtn.addEventListener('click', () => {
+        authModal.style.display = 'block';
+    });
+
+    // Обработчик для формы авторизации
+    authForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const formData = new FormData(authForm);
+        const username = formData.get('username');
+        const password = formData.get('password');
+
+        // Сохраняем данные авторизации на фронтенде
+        authData = {
+            username: username,
+            password: password
         };
 
-        fetch(url, {
+        // Сбрасываем форму и закрываем модальное окно
+        authModal.style.display = 'none';
+        authForm.reset();
+
+        // Перезагружаем данные после авторизации
+        fetchMedications();
+    });
+
+    // Функция для отправки запросов с авторизацией
+    function fetchWithAuth(url, options) {
+        // Если есть данные авторизации, добавляем Basic Auth заголовок
+        if (authData) {
+            const headers = options.headers || {};
+            headers['Authorization'] = `Basic ${btoa(`${authData.username}:${authData.password}`)}`;
+            options.headers = headers;
+        }
+
+        // Отправляем запрос с обновленными опциями
+        return fetch(url, options);
+    }
+
+    // Функция для получения списка медикаментов
+    function fetchMedications(page = currentPage, limit = itemsPerPage, searchQuery = '') {
+        var url = '';
+        if (searchQuery === '') {
+            url = '/api/getPage';
+            const requestData = {
+                page: page,
+                limit: limit,
+                searchQuery: searchQuery
+            };
+
+        fetchWithAuth(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -35,12 +83,46 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(response => response.json())
         .then(data => {
             medications = data;
-            renderMedications();
-            updatePaginationControls();
+            if (!medications && currentPage > 0) {
+                currentPage--;
+                fetchMedications(currentPage, itemsPerPage, searchQuery);
+            } else {
+                renderMedications();
+                updatePaginationControls();
+            }
         })
         .catch(error => console.error('Error fetching medications:', error));
+        }else{
+            url = '/api/searchDrug';
+            const requestData = {
+                name: searchQuery,
+            };
+
+        fetchWithAuth(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            medications = data;
+            if (!medications && currentPage > 0) {
+                currentPage--;
+                fetchMedications(currentPage, itemsPerPage, searchQuery);
+            } else {
+                renderMedications();
+                updatePaginationControls();
+            }
+        })
+        .catch(error => console.error('Error fetching medications:', error));
+        }
+
+        
     }
 
+    // Функция для отображения списка медикаментов в таблице
     function renderMedications() {
         medicationsList.innerHTML = '';
         medications.forEach(medication => {
@@ -56,126 +138,98 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             medicationsList.appendChild(row);
         });
-        pageIndicator.textContent = `Страница ${currentPage}`;
+        pageIndicator.textContent = `Страница ${currentPage + 1}`;
     }
 
+    // Функция для обновления элементов управления пагинацией
     function updatePaginationControls() {
         prevPage.disabled = currentPage === 0;
         nextPage.disabled = medications.length < itemsPerPage;
     }
 
-    searchInput.addEventListener('input', () => {
-        fetchMedications(currentPage, itemsPerPage);
+    // Обработчик для поиска при вводе в поле поиска
+    searchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const searchQuery = searchInput.value;
+            currentPage = 0;  // Сброс страницы на первую при новом поиске
+            fetchMedications(currentPage, itemsPerPage, searchQuery);
+        }
     });
 
+    // Обработчик для открытия модального окна добавления медикамента
     addBtn.addEventListener('click', () => {
         modal.style.display = 'block';
         medicationForm.reset();
     });
 
+    // Обработчики для закрытия всех модальных окон
     closeBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             modal.style.display = 'none';
             adjustModal.style.display = 'none';
+            authModal.style.display = 'none';
         });
     });
 
+    // Обработчик для отправки формы добавления медикамента
     medicationForm.addEventListener('submit', (event) => {
         event.preventDefault();
-        console.log('Form submitted');  // Логирование события
 
         const formData = new FormData(medicationForm);
         const medication = {
-            drug: formData.get('name'),
-            count: Number(formData.get('quantity')),
+            name: formData.get('name'),
+            quantity: Number(formData.get('quantity')),
         };
 
-        fetch('http://localhost:8082/newDrug', {
+        fetchWithAuth('/api/newDrug', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(medication)
         })
-        .then(response => {
-            console.log(response);  // Логирование ответа
-            return response.json();
-        })
         .then(() => {
             modal.style.display = 'none';
-            fetchMedications(currentPage, 5);
+            fetchMedications(currentPage, itemsPerPage);
         })
-        .catch(error => {
-            console.error('Error:', error);  // Логирование ошибок
-        });
+        .catch(error => console.error('Error adding medication:', error));
     });
 
+    // Обработчик для кнопки "Предыдущая страница"
     prevPage.addEventListener('click', () => {
         if (currentPage > 0) {
             currentPage--;
-            fetchMedications(currentPage, itemsPerPage);
+            fetchMedications(currentPage, itemsPerPage, searchInput.value);
         }
     });
 
+    // Обработчик для кнопки "Следующая страница"
     nextPage.addEventListener('click', () => {
         if (medications.length === itemsPerPage) {
             currentPage++;
-            fetchMedications(currentPage, itemsPerPage);
+            fetchMedications(currentPage, itemsPerPage, searchInput.value);
         }
     });
 
-    window.editMedication = (id) => {
-        const medication = medications.find(m => m.id === id);
-        if (medication) {
-            modal.style.display = 'block';
-            medicationForm.name.value = medication.name;
-            medicationForm.quantity.value = medication.quantity;
-
-            medicationForm.onsubmit = (event) => {
-                event.preventDefault();
-                const updatedMedication = {
-                    name: medicationForm.name.value,
-                    quantity: medicationForm.quantity.value
-                };
-
-                fetch(`http://yourapi.com/medications/${id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(updatedMedication)
-                })
-                .then(response => response.json())
-                .then(() => {
-                    modal.style.display = 'none';
-                    fetchMedications(currentPage, 5);
-                })
-                .catch(error => {
-                    console.error('Error updating medication:', error);  // Логирование ошибок
-                });
-            };
-        }
-    };
-
+    // Функция для удаления медикамента
     window.deleteMedication = (name) => {
         if (confirm('Вы уверены, что хотите удалить этот медикамент?')) {
-            fetch('/deleteDrug', {
+            fetchWithAuth('/api/deleteDrug', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ drug: name })
+                body: JSON.stringify({ name: name })
             })
-            .then(response => response.json())
             .then(() => {
-                fetchMedications(currentPage, 5);
+                fetchMedications(currentPage, itemsPerPage, searchInput.value);
             })
-            .catch(error => {
-                console.error('Error deleting medication:', error);
-            });
+            .catch(error => console.error('Error deleting medication:', error));
         }
     };
 
+    // Функция для отображения модального окна для корректировки количества медикамента
     window.showAdjustModal = (name, action) => {
         adjustMedicationId = name;
         adjustAction = action;
@@ -183,32 +237,28 @@ document.addEventListener('DOMContentLoaded', () => {
         adjustForm.reset();
     };
 
+    // Обработчик для отправки формы корректировки количества медикамента
     adjustForm.addEventListener('submit', (event) => {
-        event.preventDefault();
-        const adjustQuantity = Number(document.getElementById('adjustQuantity').value);
-        const medication = {
-            drug: adjustMedicationId,
-            count: adjustQuantity,
-        };
+    event.preventDefault();
+    const adjustQuantity = Number(document.getElementById('adjustQuantity').value);
+    const medication = {
+        name: adjustMedicationId,
+        quantity: Number(adjustQuantity),
+    };
 
-        const url = adjustAction === 'sub' ? '/subDrug' : '/addDrug';
+    const endpoint = adjustAction === 'sub' ? '/api/subDrug' : '/api/addDrug';
 
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(medication)
-        })
-        .then(response => response.json())
-        .then(() => {
-            adjustModal.style.display = 'none';
-            fetchMedications(currentPage, 5);
-        })
-        .catch(error => {
-            console.error('Error adjusting medication:', error);  // Логирование ошибок
-        });
-    });
-
-    fetchMedications();
+    fetchWithAuth(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(medication)
+    })
+    .then(() => {
+        adjustModal.style.display = 'none';
+        fetchMedications(currentPage, itemsPerPage, searchInput.value);
+    })
+    .catch(error => console.error('Error adjusting medication:', error));
+});
 });
