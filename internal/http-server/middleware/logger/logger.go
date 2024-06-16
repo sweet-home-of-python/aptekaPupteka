@@ -1,12 +1,21 @@
 package logger
 
 import (
+	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"log/slog"
 
 	"github.com/go-chi/chi/middleware"
+)
+
+const (
+	EnvLocal = "local"
+	EnvDev   = "dev"
+	EnvProd  = "prod"
 )
 
 func New(log *slog.Logger) func(next http.Handler) http.Handler {
@@ -52,4 +61,24 @@ func New(log *slog.Logger) func(next http.Handler) http.Handler {
 		// Возвращаем созданный выше обработчик, приведя его к типу http.HandlerFunc
 		return http.HandlerFunc(fn)
 	}
+}
+
+func SetupLogger(env string) *slog.Logger {
+	var log *slog.Logger
+	file, err := os.OpenFile("./logs/logs.txt", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644) // |os.O_APPEND
+	if err != nil {
+		fmt.Println("Ошибка при открытии файла:", err)
+		return nil
+	}
+	mw := io.MultiWriter(os.Stdout, file)
+	switch env {
+	case EnvLocal:
+		log = slog.New(slog.NewTextHandler(mw, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	case EnvDev:
+		log = slog.New(slog.NewJSONHandler(mw, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	case EnvProd:
+		log = slog.New(slog.NewJSONHandler(mw, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	}
+
+	return log
 }
