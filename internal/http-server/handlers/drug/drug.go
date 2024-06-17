@@ -74,6 +74,7 @@ type DrugSeacher interface {
 }
 
 
+
 // метод new для интерфейса создания нового наркотика
 func New(log *slog.Logger, drugSaver DrugSaver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

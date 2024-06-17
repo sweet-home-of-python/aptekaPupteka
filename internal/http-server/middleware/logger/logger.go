@@ -12,15 +12,15 @@ import (
 	"github.com/go-chi/chi/middleware"
 )
 
-const (
+const ( // константы для логирования
 	EnvLocal = "local"
 	EnvDev   = "dev"
 	EnvProd  = "prod"
 )
 
-func New(log *slog.Logger) func(next http.Handler) http.Handler {
+func New(log *slog.Logger) func(next http.Handler) http.Handler { // функция для логирования
 	return func(next http.Handler) http.Handler {
-		log = log.With(
+		log = log.With( // собираем исходную информацию о запросе
 			slog.String("component", "middleware/logger"),
 		)
 
@@ -29,7 +29,7 @@ func New(log *slog.Logger) func(next http.Handler) http.Handler {
 		// код самого обработчика
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			// собираем исходную информацию о запросе
-			entry := log.With(
+			entry := log.With( 
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
 				slog.String("remote_addr", r.RemoteAddr),
@@ -63,16 +63,16 @@ func New(log *slog.Logger) func(next http.Handler) http.Handler {
 	}
 }
 
-func SetupLogger(env string) *slog.Logger {
-	var log *slog.Logger
-	file, err := os.OpenFile("./logs/logs.txt", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644) // |os.O_APPEND
+func SetupLogger(env string) *slog.Logger { // Настройка логгера
+	var log *slog.Logger 
+	file, err := os.OpenFile("./logs/logs.txt", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644) // создаем новый файл для логирования // |os.O_APPEND
 	if err != nil {
 		fmt.Println("Ошибка при открытии файла:", err)
 		return nil
 	}
-	mw := io.MultiWriter(os.Stdout, file)
+	mw := io.MultiWriter(os.Stdout, file) // подключаем вывод в два потока: консоль и файл
 	switch env {
-	case EnvLocal:
+	case EnvLocal: // устанавливаем уровень логирования
 		log = slog.New(slog.NewTextHandler(mw, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	case EnvDev:
 		log = slog.New(slog.NewJSONHandler(mw, &slog.HandlerOptions{Level: slog.LevelDebug}))
