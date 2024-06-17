@@ -28,7 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	router := chi.NewRouter() // Инициализируем роутер
+	router := chi.NewRouter() // Инициализируем роутер .
 	router.Use(middleware.RequestID) // Идентификатор запроса
 	router.Use(middleware.Logger)    // Логирование всех запросов
 	router.Use(middleware.Recoverer) // Если где-то внутри сервера (обработчика запроса) произойдет паника, приложение не должно упасть
