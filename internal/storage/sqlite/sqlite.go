@@ -32,6 +32,7 @@ func New(storagePath string) (*Storage, error) {
 		return nil, fmt.Errorf("failed to create database: %s: %w", op, err)
 	}
 
+	// ! Нужно ли это делать постоянно?
 	err = db.AutoMigrate(&Drugs{}) // мигрируем таблицу
 
 	if err != nil {
@@ -46,15 +47,15 @@ func New(storagePath string) (*Storage, error) {
 func (s *Storage) NewDrug(drugName string, count int32) (uint, error) {
 	const op = "storage.sqlite.NewDrug"
 	var drug Drugs
-	
+
 	s.db.Unscoped().Where("name = ?", drugName).Delete(&drug)
 
-	if count > 0 && count < 65500{
+	if count > 0 && count < 65500 {
 		drug.Count = count
-	}else {
+	} else {
 		drug.Count = 0
 	}
-	
+
 	drug.Name = drugName
 	err := s.db.Create(&drug).Error
 
@@ -86,15 +87,14 @@ func (s *Storage) AddDrug(drugName string, count int32) (uint, error) {
 	}
 
 	var newCount int32 = drug.Count
-	if count > 0{
+	if count > 0 {
 		newCount = drug.Count + count
-	}else
-	{
+	} else {
 		err := errors.New("can not take, count is not correct!")
 		fmt.Errorf("%s: error count : %w", op, err)
 		return 0, err
 	}
-	 // новое, пересчитанное количество наркотиков
+	// новое, пересчитанное количество наркотиков
 
 	if newCount > 65500 && newCount < 0 { // ограничиваем верхний порог
 		err := errors.New("can not add, drugs will full!")
@@ -126,16 +126,15 @@ func (s *Storage) SubDrug(drugName string, count int32) (uint, error) {
 	}
 
 	var newCount int32 = drug.Count
-	if count > 0{
+	if count > 0 {
 		newCount = drug.Count - count
-	}else {
+	} else {
 		err := errors.New("can not take, count is not correct!")
 		fmt.Errorf("%s: error count : %w", op, err)
 		return 0, err
 	}
-	
 
-	if newCount < 0  && newCount < 65500{ // нельзя забрать больше 0
+	if newCount < 0 && newCount < 65500 { // нельзя забрать больше 0
 		err := errors.New("can not take, drugs will empty!")
 		fmt.Errorf("%s: drug take error: %w", op, err)
 		return 0, err
@@ -215,7 +214,7 @@ func (s *Storage) SearchDrug(drugName string) ([]Drugs, error) {
 	var drugs []Drugs
 
 	err := s.db.Where("name LIKE ?", drugName+"%").Find(&drugs).Error
-	if err != nil{
+	if err != nil {
 	}
 
 	return drugs, nil

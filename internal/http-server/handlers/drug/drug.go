@@ -68,19 +68,17 @@ type DrugDeleter interface {
 type PageGetter interface {
 	GetPage(page int, limit int) ([]sqlite.Drugs, error)
 }
+
 // интерфейс для поиска наркотиков
 type DrugSeacher interface {
 	SearchDrug(drug string) ([]sqlite.Drugs, error)
 }
-
-
 
 // метод new для интерфейса создания нового наркотика
 func New(log *slog.Logger, drugSaver DrugSaver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.drug.New"
 
-		
 		// Добавляем к текущму объекту логгера поля op и request_id
 		log = log.With(
 			slog.String("op", op),
@@ -89,9 +87,7 @@ func New(log *slog.Logger, drugSaver DrugSaver) http.HandlerFunc {
 
 		var req DrugUnit
 
-		err := render.DecodeJSON(r.Body, &req)
-
-		
+		err := render.DecodeJSON(r.Body, &req) // ! this value of err is never used
 
 		log.Info("request body decoded:", slog.Any("req", req))
 
@@ -108,19 +104,18 @@ func New(log *slog.Logger, drugSaver DrugSaver) http.HandlerFunc {
 				log.Info("drug already exist:", slog.String("drug", req.Drug))
 				render.JSON(w, r, "drug already exist")
 				return
-			}else{
+			} else {
 				log.Error("failed save drug", sl.Err(err))
 				render.JSON(w, r, "save drug error")
 				return
 			}
 		}
-		
+
 		log.Info("drug added", "id", id)
 		render.JSON(w, r, "drug saved")
 
 	}
 }
-
 
 // метод add для интерфейса добавления наркотика
 func Add(log *slog.Logger, drugAdder DrugAdder) http.HandlerFunc {
@@ -141,23 +136,22 @@ func Add(log *slog.Logger, drugAdder DrugAdder) http.HandlerFunc {
 				log.Error("request body is empty")
 				render.JSON(w, r, "empty request")
 				return
-			}else{
+			} else {
 				log.Error("failed to decode request body", sl.Err(err))
 				render.JSON(w, r, "failed to decode request")
 				return
 			}
 		}
-		
+
 		log.Info("request body decoded", slog.Any("req", req))
 
-		
 		if err := validator.New().Struct(req); err != nil {
 			log.Error("validation error:", sl.Err(err))
 			render.JSON(w, r, "invalid request")
 			return
 		}
 
-		_ , err = drugAdder.AddDrug(req.Drug, req.Count)
+		_, err = drugAdder.AddDrug(req.Drug, req.Count)
 
 		if err != nil {
 			log.Error("failed add drug:", sl.Err(err))
@@ -181,24 +175,22 @@ func Sub(log *slog.Logger, drugSubber DrugSubber) http.HandlerFunc {
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
-
 		var req DrugUnit
 
 		err := render.DecodeJSON(r.Body, &req)
-		
+
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				log.Error("request body is empty")
 				render.JSON(w, r, "empty request")
 				return
-			}else{
+			} else {
 				log.Error("failed to decode request body", sl.Err(err))
 				render.JSON(w, r, "failed to decode request")
 				return
 			}
-			
-		}
 
+		}
 
 		log.Info("request body decoded:", slog.Any("req", req))
 
@@ -220,12 +212,12 @@ func Sub(log *slog.Logger, drugSubber DrugSubber) http.HandlerFunc {
 		render.JSON(w, r, "drug count substracted")
 	}
 }
+
 // метод get для интерфейса получения списка наркотиков
 
 func GetAll(log *slog.Logger, scrubber DrugScrubber) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.save.GetAll"
-
 
 		log = log.With(
 			slog.String("op", op),

@@ -6,7 +6,8 @@ import (
 	"strings"
 )
 
-var Users = map[string]string{  // пользователи и пароли
+// ! Нельзя хранить пользователи и пароли в коде
+var Users = map[string]string{ // пользователи и пароли
 	"yar": "asslove",
 	"dim": "ass",
 }
@@ -14,13 +15,13 @@ var Users = map[string]string{  // пользователи и пароли
 func BasicAuth(next http.Handler) http.Handler { // кастомная функция для авторизаци
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization") // получаем header авторизации
-		if auth == "" { // если нет авторизации
+		if auth == "" {                       // если нет авторизации
 			w.WriteHeader(http.StatusUnauthorized) // возвращаем ошибку
-			w.Write([]byte("Unauthorized")) 
+			w.Write([]byte("Unauthorized"))
 			return
 		}
 
-		parts := strings.SplitN(auth, " ", 2) // разбиваем на 2 части
+		parts := strings.SplitN(auth, " ", 2)       // разбиваем на 2 части
 		if len(parts) != 2 || parts[0] != "Basic" { // если нет Basic
 			w.WriteHeader(http.StatusUnauthorized) // возвращаем ошибку
 			w.Write([]byte("Unauthorized"))
